@@ -788,42 +788,142 @@ audio {
 @media (max-width: 768px) {
     .app-container {
         width: 100%;
-        height: 100vh; /* Take full screen */
+        height: 100dvh; /* Use dynamic viewport height to fix iOS Safari nav bar bugs! */
         border-radius: 0;
         border: none;
     }
     header {
         flex-direction: column;
-        gap: 15px;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+    header h1 {
+        font-size: 20px;
+        text-align: center;
     }
     .header-controls {
         width: 100%;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 10px;
+        overflow-x: auto; /* Side-scrolling for all the tools */
+        padding-bottom: 5px;
+        -webkit-overflow-scrolling: touch;
     }
-    #searchInput { flex: 1; }
-    main { flex-direction: column; }
-    .browse-section {
+    .header-controls::-webkit-scrollbar { display: none; }
+    #searchInput { 
+        width: 160px; 
+        flex-shrink: 0;
+        order: -1; /* Put search bar neatly on top */
+        margin-bottom: 0;
+    }
+    
+    /* Swipeable Main Section for native app feel */
+    main { 
+        flex-direction: row; 
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+    }
+    main::-webkit-scrollbar { display: none; }
+    
+    .browse-section, .lyrics-section {
+        flex: 0 0 100%;
+        width: 100%;
+        height: 100%;
+        scroll-snap-align: start;
         border-right: none;
-        border-bottom: 1px solid rgba(156, 180, 155, 0.3);
-        max-height: 35vh; /* Keep song list compact to leave room for lyrics */
+        border-bottom: none;
+        padding: 10px 15px;
     }
+    
+    .browse-header h2::after {
+        content: ' (Swipe 👉)';
+        font-size: 11px;
+        opacity: 0.6;
+    }
+    .lyrics-section h2::before {
+        content: '(👈 Swipe) ';
+        font-size: 11px;
+        opacity: 0.6;
+    }
+    
+    /* Compact Sticky Footer */
     footer {
         flex-direction: column;
-        gap: 15px;
-        padding: 15px 20px;
+        gap: 8px;
+        padding: 10px 15px 15px 15px;
+        background: rgba(0, 0, 0, 0.75);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .now-playing { width: 100%; justify-content: center; }
+    .now-playing { 
+        width: 100%; 
+        justify-content: flex-start; 
+    }
+    .album-cover-wrapper, .album-cover {
+        width: 40px; height: 40px;
+    }
+    .song-info {
+        flex: 1;
+        overflow: hidden;
+        white-space: nowrap;
+        margin-left: 5px;
+    }
+    #currentSongTitle { font-size: 14px; }
+    #currentArtist { font-size: 11px; }
+    #currentSongTitle, #currentArtist {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
     .player-controls-container { width: 100%; }
-    .volume-controls { display: none; /* Hide volume bar on mobile (hardware buttons take over) */ }
+    .player-buttons { 
+        width: 100%; 
+        justify-content: space-between;
+        margin-bottom: 5px; 
+    }
+    .play-pause { font-size: 32px; }
+    
+    .playback-bar { width: 100%; margin-top: 2px; }
+    
+    /* Show EQ, Zen, Sleep, but hide Volume Slider on Mobile */
+    .volume-controls { 
+        display: flex; 
+        width: 100%; 
+        justify-content: center;
+        gap: 25px;
+        margin-top: 5px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 8px;
+    }
+    #volumeBar, #muteBtn { display: none; }
+    
+    .made-with-love { display: none; } /* Reclaim vertical space */
+    
     .startup-screen h1 { font-size: 2.2rem; }
     
+    /* Fix polaroid for swipe layout */
     .polaroid-container {
-        top: auto;
-        bottom: 20px;
-        right: 20px;
+        top: 40px;
+        right: 15px;
+        bottom: auto;
         transform: translateY(120%) rotate(15deg);
     }
     .polaroid-container.visible {
-        transform: translateY(0) translateX(0) rotate(-2deg);
+        transform: translateY(0) translateX(0) rotate(3deg) scale(0.7);
+        transform-origin: top right;
+    }
+    
+    /* Fix modal sizes */
+    .login-container {
+        padding: 25px 20px;
+        max-height: 90dvh;
+        overflow-y: auto;
+    }
+    .eq-knobs-container {
+        transform: scale(0.85);
+        margin: 5px 0;
     }
 }
 

@@ -1721,6 +1721,14 @@ function playSong(song) {
     polaroidContainer.classList.remove("visible");
   }
 
+  // --- Auto-Swipe to Lyrics on Mobile! ---
+  if (window.innerWidth <= 768) {
+    const mainContainer = document.querySelector("main");
+    if (mainContainer) {
+      mainContainer.scrollTo({ left: window.innerWidth, behavior: "smooth" });
+    }
+  }
+
   // Setup Media Session API (Lock Screen & Device Controls)
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
