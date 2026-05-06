@@ -432,6 +432,76 @@ audio {
     line-height: 1.4;
 }
 
+/* --- LOGIN SCREEN --- */
+.login-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    transition: opacity 0.5s ease;
+}
+
+.login-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(156, 180, 155, 0.3);
+    padding: 40px 30px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 400px;
+}
+
+.login-icon {
+    font-size: 40px;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.login-question {
+    color: var(--text-main);
+    font-size: 16px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.login-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.login-option-btn {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(156, 180, 155, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.login-option-btn:hover {
+    background: var(--primary-color);
+    color: var(--bg-color);
+    transform: scale(1.02);
+}
+
+.login-error {
+    color: #ff4d6d;
+    margin-top: 15px;
+    font-size: 14px;
+    display: none;
+}
+
 /* --- STARTUP ANIMATION --- */
 .startup-screen {
     position: fixed;

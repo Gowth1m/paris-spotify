@@ -1637,16 +1637,42 @@ function createFlowers() {
 }
 createFlowers();
 
-// 8. Startup Screen Animation Logic
-window.addEventListener('load', () => {
+// 8. Login Auth & Startup Screen Animation Logic
+const loginScreen = document.getElementById("loginScreen");
+const startupScreen = document.getElementById("startupScreen");
+const loginError = document.getElementById("loginError");
+const loginOptions = document.querySelectorAll(".login-option-btn");
+
+function playStartupAnimation() {
   setTimeout(() => {
-    const startupScreen = document.getElementById('startupScreen');
     if (startupScreen) {
       startupScreen.style.opacity = '0';
       setTimeout(() => startupScreen.remove(), 800); // Wait for transition to finish
     }
   }, 1800); // Show startup screen for 1.8 seconds
-});
+}
+
+// Check if she already correctly answered this on her device before
+if (localStorage.getItem("pariSpotifyUnlocked") === "true") {
+  if (loginScreen) loginScreen.remove();
+  window.addEventListener('load', playStartupAnimation);
+} else {
+  loginOptions.forEach(button => {
+    button.addEventListener("click", function() {
+      const isCorrect = this.getAttribute("data-correct") === "true";
+      if (isCorrect) {
+        localStorage.setItem("pariSpotifyUnlocked", "true");
+        loginScreen.style.opacity = '0';
+        setTimeout(() => {
+          loginScreen.remove();
+          playStartupAnimation(); // Trigger startup after login
+        }, 500);
+      } else {
+        loginError.style.display = 'block';
+      }
+    });
+  });
+}
 
 // 9. Cute "Send Love" Heart Burst Animation
 loveBtn.addEventListener("click", (e) => {

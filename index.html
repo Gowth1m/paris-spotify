@@ -4,11 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>pari's personal spotify❤️</title>
+    
+    <!-- Web App Manifest for App-like experience -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2b3a2f">
+
     <!-- Font Awesome for Spotify-like Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Login Auth Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <i class="fas fa-lock login-icon"></i>
+            <h2>Security Check 💚</h2>
+            <p class="login-question">What were you wearing the first time I saw you?</p>
+            <div class="login-options">
+                <button class="login-option-btn" data-correct="false">Black top and jeans</button>
+                <button class="login-option-btn" data-correct="false">White summer dress</button>
+                <button class="login-option-btn" data-correct="true">Pink tee and shorts</button>
+                <button class="login-option-btn" data-correct="false">Oversized hoodie</button>
+            </div>
+            <p id="loginError" class="login-error">That's not right! Try again 💔</p>
+        </div>
+    </div>
+
     <!-- Startup Animation Screen -->
     <div id="startupScreen" class="startup-screen">
         <h1 class="startup-title">pari's personal spotify</h1>
