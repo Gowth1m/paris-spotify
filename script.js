@@ -1241,6 +1241,7 @@ const polaroidText = document.getElementById("polaroidText");
 const partyBtn = document.getElementById("partyBtn");
 const zenModeBtn = document.getElementById("zenModeBtn");
 const downloadWrappedBtn = document.getElementById("downloadWrappedBtn");
+const clearDataBtn = document.getElementById("clearDataBtn");
 
 // Setup Mini Visualizer & Title Wrapper
 const titleWrapper = document.createElement('div');
@@ -1409,11 +1410,11 @@ function initVisualizer() {
         if (eqCanvas.height !== eqCanvas.offsetHeight) eqCanvas.height = eqCanvas.offsetHeight;
         eqCtx.clearRect(0, 0, eqCanvas.width, eqCanvas.height);
 
+        const color = document.documentElement.style.getPropertyValue('--primary-color') || '#9cb49b';
         const eqBarWidth = (eqCanvas.width / bufferLength) * 2.5;
         let eqX = 0;
         for (let i = 0; i < bufferLength; i++) {
           const eqBarHeight = (dataArray[i] / 255) * eqCanvas.height;
-          const color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#9cb49b';
           eqCtx.fillStyle = color;
           eqCtx.fillRect(eqX, eqCanvas.height - eqBarHeight, eqBarWidth, eqBarHeight);
           eqX += eqBarWidth + 1;
@@ -1423,12 +1424,12 @@ function initVisualizer() {
 
       canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
       
+      const primaryColor = document.documentElement.style.getPropertyValue('--primary-color') || '#9cb49b';
       const barWidth = (visualizerCanvas.width / bufferLength) * 2.5;
       let x = 0;
       
       for (let i = 0; i < bufferLength; i++) {
         const barHeight = (dataArray[i] / 255) * visualizerCanvas.height;
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#9cb49b';
         canvasCtx.fillStyle = primaryColor;
         canvasCtx.fillRect(x, visualizerCanvas.height - barHeight, barWidth, barHeight);
         x += barWidth + 1;
@@ -1773,8 +1774,14 @@ function playSong(song) {
             for (let i = 0; i < picture.data.length; i++) {
               base64String += String.fromCharCode(picture.data[i]);
             }
-            albumCover.src =
-              "data:" + picture.format + ";base64," + window.btoa(base64String);
+            const base64Cover = "data:" + picture.format + ";base64," + window.btoa(base64String);
+            albumCover.src = base64Cover;
+            
+            if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
+              navigator.mediaSession.metadata.artwork = [
+                { src: base64Cover, sizes: '512x512', type: picture.format }
+              ];
+            }
           }
         },
         onError: function (error) {
@@ -1900,11 +1907,13 @@ playPauseBtn.addEventListener("click", () => {
     let dropRate = audioPlayer.playbackRate;
     tapeStopInterval = setInterval(() => {
       dropRate -= 0.06;
-      if (dropRate <= 0.05) {
+      if (dropRate <= 0.1) {
         clearInterval(tapeStopInterval);
         audioPlayer.pause();
         audioPlayer.playbackRate = isReverbActive ? 0.85 : 1.0;
-      } else audioPlayer.playbackRate = dropRate;
+      } else {
+        try { audioPlayer.playbackRate = dropRate; } catch(e){}
+      }
     }, 20);
   } else {
     playIcon.className = "fas fa-pause-circle";
@@ -1913,14 +1922,16 @@ playPauseBtn.addEventListener("click", () => {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
 
     // Turntable Wind Up
-    audioPlayer.playbackRate = 0.1;
+    try { audioPlayer.playbackRate = 0.1; } catch(e){}
     audioPlayer.play();
     const targetRate = isReverbActive ? 0.85 : 1.0;
     tapeStartInterval = setInterval(() => {
-      audioPlayer.playbackRate += 0.06;
-      if (audioPlayer.playbackRate >= targetRate) {
+      let newRate = audioPlayer.playbackRate + 0.06;
+      if (newRate >= targetRate) {
         clearInterval(tapeStartInterval);
         audioPlayer.playbackRate = targetRate;
+      } else {
+        try { audioPlayer.playbackRate = newRate; } catch(e){}
       }
     }, 20);
   }
@@ -2023,11 +2034,13 @@ audioPlayer.addEventListener("timeupdate", () => {
 // Sync lock screen progress bar
 function updatePositionState() {
   if ('mediaSession' in navigator && !isNaN(audioPlayer.duration)) {
-    navigator.mediaSession.setPositionState({
-      duration: audioPlayer.duration,
-      playbackRate: audioPlayer.playbackRate,
-      position: audioPlayer.currentTime
-    });
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: audioPlayer.duration,
+        playbackRate: audioPlayer.playbackRate,
+        position: Math.min(Math.max(0, audioPlayer.currentTime), audioPlayer.duration)
+      });
+    } catch(e) {}
   }
 }
 audioPlayer.addEventListener('loadedmetadata', updatePositionState);
@@ -2194,7 +2207,7 @@ const startupScreen = document.getElementById("startupScreen");
 const loginError = document.getElementById("loginError");
 const loginSuccess = document.getElementById("loginSuccess");
 const loginOptionsContainer = document.getElementById("loginOptionsContainer");
-const loginOptions = document.querySelectorAll(".login-option-btn");
+const loginOptions = loginOptionsContainer ? loginOptionsContainer.querySelectorAll(".login-option-btn") : [];
 
 function playStartupAnimation() {
   setTimeout(() => {
@@ -2208,7 +2221,11 @@ function playStartupAnimation() {
 // Check if she already correctly answered this on her device before
 if (localStorage.getItem("pariSpotifyUnlocked") === "true") {
   if (loginScreen) loginScreen.remove();
-  window.addEventListener('load', playStartupAnimation);
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    playStartupAnimation();
+  } else {
+    window.addEventListener('load', playStartupAnimation);
+  }
 } else {
   // Shuffle the options so they are in a random order every time
   if (loginOptionsContainer) {
@@ -2851,6 +2868,40 @@ if (coverFileInput) {
     
     // Reset input so the same file can be selected again
     e.target.value = "";
+  });
+}
+
+// 19. Clear Custom Data (Free up Storage Space)
+if (clearDataBtn) {
+  clearDataBtn.addEventListener("click", () => {
+    const confirmed = confirm("Are you sure you want to clear all custom data? This will safely delete your imported songs, custom playlists, custom album covers, and polaroid memories to free up space on your device.");
+    if (confirmed) {
+      // Clear heavy localStorage items
+      localStorage.removeItem("likedSongs");
+      localStorage.removeItem("customPlaylists");
+      localStorage.removeItem("pariPlayStats");
+      localStorage.removeItem("pariCustomCovers");
+      localStorage.removeItem("pariCustomMemories");
+      
+      // Clear IndexedDB imported audio files
+      if (db) {
+        try {
+          const transaction = db.transaction(["importedSongs"], "readwrite");
+          const store = transaction.objectStore("importedSongs");
+          store.clear();
+          transaction.oncomplete = () => {
+            alert("Custom data cleared successfully! Reloading app...");
+            location.reload();
+          };
+        } catch (err) {
+          alert("Custom data cleared! Reloading app...");
+          location.reload();
+        }
+      } else {
+        alert("Custom data cleared! Reloading app...");
+        location.reload();
+      }
+    }
   });
 }
 
