@@ -1708,7 +1708,15 @@ function playSong(song) {
   const activeItem = document.querySelector(`.song-item[data-song-id="${song.id}"]`);
   if (activeItem) {
     activeItem.classList.add('playing-genie');
-    activeItem.scrollIntoView({ behavior: "smooth", block: "center" });
+    
+    // Math-based vertical scroll to prevent horizontal swipe-locking on mobile
+    const listContainer = document.getElementById("songList");
+    if (listContainer) {
+      const itemRect = activeItem.getBoundingClientRect();
+      const containerRect = listContainer.getBoundingClientRect();
+      const scrollTop = listContainer.scrollTop + (itemRect.top - containerRect.top) - (containerRect.height / 2) + (itemRect.height / 2);
+      listContainer.scrollTo({ top: scrollTop, behavior: "smooth" });
+    }
   }
 
   // Display Digital Polaroid Memory if it exists
@@ -1859,8 +1867,14 @@ audioPlayer.addEventListener("timeupdate", () => {
     if (activeLine && !activeLine.classList.contains("active")) {
       activeLine.classList.add("active");
 
-      // Smoothly scroll the lyrics container so the active line stays in the middle
-      activeLine.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Math-based vertical scroll to prevent horizontal swipe-locking on mobile
+      const lyricsCont = document.getElementById("lyricsContainer");
+      if (lyricsCont) {
+        const itemRect = activeLine.getBoundingClientRect();
+        const containerRect = lyricsCont.getBoundingClientRect();
+        const scrollTop = lyricsCont.scrollTop + (itemRect.top - containerRect.top) - (containerRect.height / 2) + (itemRect.height / 2);
+        lyricsCont.scrollTo({ top: scrollTop, behavior: "smooth" });
+      }
     }
     
     // Word-by-word Highlighting
@@ -1949,22 +1963,25 @@ function crossfadeToSong(songIndex) {
   
   isFading = true;
   const userTargetVolume = parseFloat(volumeBar.value) || 1;
+  let currentFadeVol = userTargetVolume; // Track virtually to fix iOS read-only volume loop bug
   
   // Smooth 500ms fade out
   let fadeOutInterval = setInterval(() => {
-    if (audioPlayer.volume > 0.1) {
-      audioPlayer.volume = Math.max(0, audioPlayer.volume - 0.1);
+    if (currentFadeVol > 0.1) {
+      currentFadeVol -= 0.1;
+      try { audioPlayer.volume = Math.max(0, currentFadeVol); } catch(e){}
     } else {
       clearInterval(fadeOutInterval);
-      audioPlayer.volume = 0;
+      try { audioPlayer.volume = 0; } catch(e){}
       playSong(songDatabase[songIndex]); // Switch tracks at silence
       
       // Smooth 500ms fade in
       let fadeInInterval = setInterval(() => {
-        if (audioPlayer.volume < userTargetVolume - 0.1) {
-          audioPlayer.volume = Math.min(userTargetVolume, audioPlayer.volume + 0.1);
+        if (currentFadeVol < userTargetVolume - 0.1) {
+          currentFadeVol += 0.1;
+          try { audioPlayer.volume = Math.min(userTargetVolume, currentFadeVol); } catch(e){}
         } else {
-          audioPlayer.volume = userTargetVolume; // Restore exact user volume
+          try { audioPlayer.volume = userTargetVolume; } catch(e){} // Restore exact user volume
           clearInterval(fadeInInterval);
           isFading = false;
         }
