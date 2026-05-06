@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>pari's personal spotify❤️</title>
     
     <!-- Bypasses hotlink protection for external images (Unsplash, Wikipedia) -->
@@ -124,6 +124,10 @@
                 <button id="wrappedBtn" class="upload-btn" title="Pari's Wrapped!"><i class="fas fa-chart-pie"></i></button>
                 <button id="shapeToggleBtn" class="upload-btn" title="Change Background Shapes!"><i class="fas fa-magic"></i></button>
                 <button id="partyBtn" class="upload-btn" title="Toggle Party Strobe!"><i class="fas fa-compact-disc"></i></button>
+                <button id="eqBtn" class="upload-btn" title="Pro Audio Studio"><i class="fas fa-sliders-h"></i></button>
+                <button id="zenModeBtn" class="upload-btn" title="Zen Karaoke Mode"><i class="fas fa-expand"></i></button>
+                <span id="sleepTimerDisplay" style="font-size: 11px; font-weight: bold; color: var(--primary-color); display: none; margin-right: 5px; align-self: center;"></span>
+                <button id="sleepTimerBtn" class="upload-btn" title="Sleep Timer"><i class="fas fa-moon"></i></button>
                 <label for="localFileInput" class="upload-btn" title="Import your own songs!">
                     <i class="fas fa-plus"></i>
                 </label>
@@ -200,10 +204,6 @@
             </div>
             
             <div class="volume-controls">
-                <button id="eqBtn" class="control-btn" title="Pro Audio Studio"><i class="fas fa-sliders-h"></i></button>
-                <button id="zenModeBtn" class="control-btn" title="Zen Karaoke Mode"><i class="fas fa-expand"></i></button>
-                <span id="sleepTimerDisplay" style="font-size: 11px; font-weight: bold; color: var(--primary-color); display: none; margin-right: 5px;"></span>
-                <button id="sleepTimerBtn" class="control-btn" title="Sleep Timer"><i class="fas fa-moon"></i></button>
                 <button id="muteBtn" class="control-btn"><i class="fas fa-volume-up"></i></button>
                 <input type="range" id="volumeBar" min="0" max="1" step="0.01" value="1">
             </div>

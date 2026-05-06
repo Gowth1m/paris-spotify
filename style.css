@@ -12,9 +12,17 @@
     padding: 0;
 }
 
+button, input[type="range"], .song-item, .album-cover-wrapper, .polaroid-image-wrapper {
+    touch-action: manipulation; /* Disables double-tap to zoom for instant responsiveness */
+    -webkit-tap-highlight-color: transparent; /* Removes blue tap highlight on Android/iOS */
+    user-select: none; /* Prevents text highlighting when long-pressing */
+    -webkit-user-select: none;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: var(--bg-gradient, linear-gradient(135deg, #1f2b22 0%, #384c3c 100%));
+    background-attachment: fixed;
     transition: background 0.8s ease-in-out;
     color: var(--text-main);
     height: 100vh;
@@ -807,15 +815,17 @@ audio {
         justify-content: flex-start;
         gap: 10px;
         overflow-x: auto; /* Side-scrolling for all the tools */
-        padding-bottom: 5px;
+        padding-bottom: 8px;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Hides scrollbar on Firefox */
     }
     .header-controls::-webkit-scrollbar { display: none; }
     #searchInput { 
-        width: 160px; 
+        width: 140px; 
         flex-shrink: 0;
         order: -1; /* Put search bar neatly on top */
         margin-bottom: 0;
+        font-size: 14px;
     }
     
     /* Swipeable Main Section for native app feel */
@@ -825,6 +835,7 @@ audio {
         overflow-y: hidden;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
+        scrollbar-width: none; /* Hides scrollbar on Firefox */
     }
     main::-webkit-scrollbar { display: none; }
     
@@ -835,7 +846,7 @@ audio {
         scroll-snap-align: start;
         border-right: none;
         border-bottom: none;
-        padding: 10px 15px;
+        padding: 5px 12px;
     }
     
     .browse-header h2::after {
@@ -852,17 +863,17 @@ audio {
     /* Compact Sticky Footer */
     footer {
         flex-direction: column;
-        gap: 8px;
-        padding: 10px 15px 15px 15px;
+        gap: 4px;
+        padding: 8px 12px 12px 12px;
         background: rgba(0, 0, 0, 0.75);
         border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
     .now-playing { 
         width: 100%; 
-        justify-content: flex-start; 
+        justify-content: space-between; 
     }
     .album-cover-wrapper, .album-cover {
-        width: 40px; height: 40px;
+        width: 36px; height: 36px;
     }
     .song-info {
         flex: 1;
@@ -870,7 +881,7 @@ audio {
         white-space: nowrap;
         margin-left: 5px;
     }
-    #currentSongTitle { font-size: 14px; }
+    #currentSongTitle { font-size: 13px; font-weight: bold; }
     #currentArtist { font-size: 11px; }
     #currentSongTitle, #currentArtist {
         overflow: hidden;
@@ -881,23 +892,15 @@ audio {
     .player-buttons { 
         width: 100%; 
         justify-content: space-between;
-        margin-bottom: 5px; 
+        margin-bottom: 2px; 
     }
-    .play-pause { font-size: 32px; }
+    .play-pause { font-size: 28px; }
+    .control-btn { font-size: 16px; }
     
     .playback-bar { width: 100%; margin-top: 2px; }
     
-    /* Show EQ, Zen, Sleep, but hide Volume Slider on Mobile */
-    .volume-controls { 
-        display: flex; 
-        width: 100%; 
-        justify-content: center;
-        gap: 25px;
-        margin-top: 5px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding-top: 8px;
-    }
-    #volumeBar, #muteBtn { display: none; }
+    /* Entire volume block is hidden since tools moved to header */
+    .volume-controls { display: none; }
     
     .made-with-love { display: none; } /* Reclaim vertical space */
     

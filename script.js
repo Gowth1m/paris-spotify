@@ -1739,9 +1739,17 @@ function playSong(song) {
         { src: customCovers[song.id] || song.cover || fallbackCover, sizes: '512x512', type: 'image/jpeg' }
       ]
     });
+    
+    // Full Support for Control Center & Dynamic Island
+    navigator.mediaSession.setActionHandler('play', () => { if (!isPlaying) playPauseBtn.click(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (isPlaying) playPauseBtn.click(); });
     navigator.mediaSession.setActionHandler('previoustrack', playPrevTrack);
     navigator.mediaSession.setActionHandler('nexttrack', playNextTrack);
-    // Play/Pause handlers will just click our main UI button to keep state in sync
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.fastSeek && !details.seekTime) return;
+      audioPlayer.currentTime = details.seekTime;
+      updatePositionState();
+    });
   }
 
   // Update Like Button State
@@ -1886,6 +1894,7 @@ playPauseBtn.addEventListener("click", () => {
     playIcon.className = "fas fa-play-circle";
     albumCover.classList.remove("playing");
     isPlaying = false;
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
 
     // Turntable Tape Stop Down
     let dropRate = audioPlayer.playbackRate;
@@ -1901,6 +1910,7 @@ playPauseBtn.addEventListener("click", () => {
     playIcon.className = "fas fa-pause-circle";
     albumCover.classList.add("playing");
     isPlaying = true;
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
 
     // Turntable Wind Up
     audioPlayer.playbackRate = 0.1;
@@ -2010,11 +2020,24 @@ audioPlayer.addEventListener("timeupdate", () => {
   }
 });
 
+// Sync lock screen progress bar
+function updatePositionState() {
+  if ('mediaSession' in navigator && !isNaN(audioPlayer.duration)) {
+    navigator.mediaSession.setPositionState({
+      duration: audioPlayer.duration,
+      playbackRate: audioPlayer.playbackRate,
+      position: audioPlayer.currentTime
+    });
+  }
+}
+audioPlayer.addEventListener('loadedmetadata', updatePositionState);
+
 // Scrub through song by clicking the bar
 progressBar.addEventListener("input", (e) => {
   const scrubTime = (e.target.value / 100) * audioPlayer.duration;
   audioPlayer.currentTime = scrubTime;
 });
+progressBar.addEventListener("change", updatePositionState);
 
 // Volume Control
 volumeBar.addEventListener("input", (e) => {
@@ -2701,20 +2724,32 @@ if (SpeechRecognition && micBtn) {
   recognition.lang = 'en-US';
 
   micBtn.addEventListener("click", () => {
-    recognition.start();
-    micBtn.classList.add("listening");
+    try {
+      recognition.start();
+      micBtn.classList.add("listening");
+      searchInput.dataset.orig = searchInput.placeholder;
+      searchInput.placeholder = "Listening... 🎤";
+    } catch (e) {
+      // Prevent crash if already started
+    }
   });
 
   recognition.onresult = (event) => {
     const command = event.results[0][0].transcript.toLowerCase();
     console.log("Heard Voice Command:", command);
+    
+    // Give visual feedback of what was heard
+    searchInput.placeholder = `Heard: "${command}"`;
+    setTimeout(() => {
+      if (!micBtn.classList.contains("listening")) searchInput.placeholder = searchInput.dataset.orig || "Search for a song...";
+    }, 2000);
 
     // Playback Controls
     if (command.includes("next") || command.includes("skip")) playNextTrack();
     else if (command.includes("previous") || command.includes("back")) playPrevTrack();
     else if (command.includes("pause") || command.includes("stop")) { if (isPlaying) playPauseBtn.click(); }
     else if (command.includes("play")) {
-      const songName = command.replace("play", "").trim();
+      const songName = command.replace(/(play|song|track)/g, "").trim();
       if (!songName && !isPlaying) playPauseBtn.click();
       else if (songName) {
         const found = songDatabase.find(s => s.title.toLowerCase().includes(songName) || songName.includes(s.title.toLowerCase()));
@@ -2756,8 +2791,14 @@ if (SpeechRecognition && micBtn) {
     else if (command.includes("stats") || command.includes("wrapped")) wrappedBtn.click();
   };
 
-  recognition.onend = () => micBtn.classList.remove("listening");
-  recognition.onerror = () => micBtn.classList.remove("listening");
+  recognition.onend = () => {
+    micBtn.classList.remove("listening");
+    searchInput.placeholder = searchInput.dataset.orig || "Search for a song...";
+  };
+  recognition.onerror = () => {
+    micBtn.classList.remove("listening");
+    searchInput.placeholder = searchInput.dataset.orig || "Search for a song...";
+  };
 }
 
 // 17. Custom Album Art Engine (Compression & Storage)
