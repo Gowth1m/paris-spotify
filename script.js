@@ -8,13 +8,20 @@ const songDatabase = [
     file: "songs/A love for life.mp3",
     cover:
       "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?q=80&w=150&auto=format&fit=crop",
+    memoryText: "one of my favourite songs ✨ and a cute cat 🐱",
+    memoryImage: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=200&auto=format&fit=crop",
     lyrics: [
       { time: 0, text: "(Instrumental music playing...)" },
-      { time: 15, text: "A love for life..." },
+      { time: 15, text: "A love for life...", words: [
+          { time: 15, text: "A" },
+          { time: 15.6, text: "love" },
+          { time: 16.3, text: "for" },
+          { time: 16.8, text: "life..." }
+      ]},
       { time: 30, text: "Pari, you are my everything ❤️" },
       { time: 45, text: "Every moment with you is magic" },
       { time: 60, text: "I never want this to end" },
-      { time: 80, text: "You are my soulmate" },
+      { time: 80, text: "You are monica to my chandler ❤️" },
       { time: 100, text: "I love you to the moon and back" },
       { time: 120, text: "(Beautiful instrumental continues...)" },
       { time: 150, text: "Forever and always" },
@@ -28,6 +35,8 @@ const songDatabase = [
     file: "songs/Aaruyire.mp3",
     cover:
       "https://images.unsplash.com/photo-1474552226712-ac0f0961a954?q=80&w=150&auto=format&fit=crop",
+    memoryText: "the song that made me fall in love with you ❤️ meow",
+    memoryImage: "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=200&auto=format&fit=crop",
     lyrics: [
       { time: 0, text: "(Instrumental intro...)" },
       {
@@ -62,6 +71,8 @@ const songDatabase = [
     file: "songs/Adiyae kolluthey.mp3",
     cover:
       "https://upload.wikimedia.org/wikipedia/en/c/c2/Vaaranam_Aayiram_poster.jpg",
+    memoryText: "i can play this in the guitarr 🐾",
+    memoryImage: "https://images.unsplash.com/photo-1495360010541-f48722b34f7d?q=80&w=200&auto=format&fit=crop",
     lyrics: [
       { time: 0, text: "(Instrumental intro...)" },
       { time: 10, text: "Vaadai kaatrinil oru naal oru vaasam vandhadhe" },
@@ -93,6 +104,8 @@ const songDatabase = [
     title: "Adiye",
     file: "songs/Adiye.mp3",
     cover: "https://upload.wikimedia.org/wikipedia/en/7/7b/Kadal_Poster.jpg",
+    memoryText: "mwahhhhhhhhhh 🥹",
+    memoryImage: "https://images.unsplash.com/photo-1513360371669-4adf3dd7dff8?q=80&w=200&auto=format&fit=crop",
     lyrics: [
       { time: 0, text: "Adiye..." },
       { time: 6, text: "Ennai thaalaattum sangeethame" },
@@ -1178,6 +1191,14 @@ const movieMappings = {
 
 // Load liked songs from local storage
 let likedSongs = JSON.parse(localStorage.getItem("likedSongs")) || [];
+// Load custom playlists from local storage (Object mapping Playlist Name -> Array of Song IDs)
+let customPlaylists = JSON.parse(localStorage.getItem("customPlaylists")) || {};
+// Load Pari's listening stats
+let playStats = JSON.parse(localStorage.getItem("pariPlayStats")) || {};
+// Load custom album covers
+let customCovers = JSON.parse(localStorage.getItem("pariCustomCovers")) || {};
+// Load custom polaroid memories
+let customMemories = JSON.parse(localStorage.getItem("pariCustomMemories")) || {};
 
 songDatabase.forEach(song => {
   song.movie = movieMappings[song.id] || "Unknown";
@@ -1207,6 +1228,217 @@ const volumeBar = document.getElementById("volumeBar");
 const muteBtn = document.getElementById("muteBtn");
 const loveBtn = document.getElementById("loveBtn");
 const localFileInput = document.getElementById("localFileInput");
+const coverFileInput = document.getElementById("coverFileInput");
+const editCoverWrapper = document.getElementById("editCoverWrapper");
+const polaroidFileInput = document.getElementById("polaroidFileInput");
+const editPolaroidWrapper = document.getElementById("editPolaroidWrapper");
+const shapeToggleBtn = document.getElementById("shapeToggleBtn");
+const sleepTimerBtn = document.getElementById("sleepTimerBtn");
+const sleepTimerDisplay = document.getElementById("sleepTimerDisplay");
+const polaroidContainer = document.getElementById("polaroidContainer");
+const polaroidImage = document.getElementById("polaroidImage");
+const polaroidText = document.getElementById("polaroidText");
+const partyBtn = document.getElementById("partyBtn");
+const zenModeBtn = document.getElementById("zenModeBtn");
+const downloadWrappedBtn = document.getElementById("downloadWrappedBtn");
+
+// Setup Mini Visualizer & Title Wrapper
+const titleWrapper = document.createElement('div');
+titleWrapper.style.display = 'flex';
+titleWrapper.style.alignItems = 'center';
+currentSongTitle.parentNode.insertBefore(titleWrapper, currentSongTitle);
+titleWrapper.appendChild(currentSongTitle);
+
+const visualizerCanvas = document.createElement("canvas");
+visualizerCanvas.id = "miniVisualizer";
+visualizerCanvas.width = 40;
+visualizerCanvas.height = 15;
+visualizerCanvas.style.marginLeft = "10px";
+titleWrapper.appendChild(visualizerCanvas);
+
+// Audio Visualizer Setup
+let audioCtx;
+let analyser;
+let dataArray;
+let canvasCtx = visualizerCanvas.getContext("2d");
+audioPlayer.crossOrigin = "anonymous";
+let currentFlowerSpeed = 1; // Tracks the current animation speed for the flowers
+let bassFilter, trebleFilter; // Audio EQ Filters
+let pannerNode, convolverNode, dryGain, wetGain; // Audio Illusions Nodes
+let vocalBypass, vocalMix; // Karaoke Nodes
+let isPartyMode = false;
+
+audioPlayer.preservesPitch = false; // Allows the Turntable Tape Stop pitch to bend!
+audioPlayer.mozPreservesPitch = false;
+audioPlayer.webkitPreservesPitch = false;
+
+function initVisualizer() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    
+    const bassValNode = document.getElementById("bassValue");
+    const trebleValNode = document.getElementById("trebleValue");
+
+    bassFilter = audioCtx.createBiquadFilter();
+    bassFilter.type = "lowshelf";
+    bassFilter.frequency.value = 200;
+    bassFilter.gain.value = bassValNode ? parseInt(bassValNode.innerText) || 0 : 0;
+
+    trebleFilter = audioCtx.createBiquadFilter();
+    trebleFilter.type = "highshelf";
+    trebleFilter.frequency.value = 3000;
+    trebleFilter.gain.value = trebleValNode ? parseInt(trebleValNode.innerText) || 0 : 0;
+
+    // Advanced Audio Illusions Nodes
+    dryGain = audioCtx.createGain();
+    wetGain = audioCtx.createGain();
+    convolverNode = audioCtx.createConvolver();
+    pannerNode = audioCtx.createStereoPanner();
+    
+    // Generate a mathematical Synthetic Impulse Response for the Reverb effect
+    const length = audioCtx.sampleRate * 2.5; // 2.5 second tail
+    const buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const data = buffer.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3);
+      }
+    }
+    convolverNode.buffer = buffer;
+    wetGain.gain.value = 0; // Off by default
+
+    // True Vocal Remover Phase Cancellation Circuit
+    vocalBypass = audioCtx.createGain();
+    vocalMix = audioCtx.createGain();
+    const splitter = audioCtx.createChannelSplitter(2);
+    const merger = audioCtx.createChannelMerger(2);
+    const inverter = audioCtx.createGain();
+    inverter.gain.value = -1; // Inverts the phase of the right channel
+
+    // Connect the Graph: Source -> [Karaoke Circuit] -> EQ -> [Dry/Wet Reverb] -> Panner -> Analyser -> Speakers
+    const source = audioCtx.createMediaElementSource(audioPlayer);
+    source.connect(vocalBypass);
+    source.connect(splitter);
+    
+    splitter.connect(merger, 0, 0); // L to L
+    splitter.connect(merger, 0, 1); // L to R
+    splitter.connect(inverter, 1);  // R to Inverter
+    inverter.connect(merger, 0, 0); // -R to L
+    inverter.connect(merger, 0, 1); // -R to R
+    merger.connect(vocalMix);
+
+    vocalBypass.connect(bassFilter);
+    vocalMix.connect(bassFilter);
+    vocalBypass.gain.value = 1;
+    vocalMix.gain.value = 0;
+
+    // Fix: Connect the Bass EQ to the Treble EQ to complete the audio circuit!
+    bassFilter.connect(trebleFilter);
+
+    trebleFilter.connect(dryGain).connect(pannerNode);
+    trebleFilter.connect(convolverNode).connect(wetGain).connect(pannerNode);
+    pannerNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    
+    analyser.fftSize = 64;
+    const bufferLength = analyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+    
+    function draw() {
+      requestAnimationFrame(draw);
+      
+      if (!isPlaying && dataArray.every(v => v === 0)) {
+        // Gracefully slow the flowers back to normal speed when music stops
+        if (currentFlowerSpeed > 1.01) {
+          currentFlowerSpeed += (1 - currentFlowerSpeed) * 0.1;
+          document.querySelectorAll('.flower').forEach(flower => {
+            flower.getAnimations().forEach(anim => anim.playbackRate = currentFlowerSpeed);
+          });
+        }
+        return;
+      }
+      
+      analyser.getByteFrequencyData(dataArray);
+
+      // --- Floating Flowers Audio Reactivity ---
+      let sum = 0;
+      // Focus on the first half of the data array (bass/lower frequencies) for the beat
+      const beatLength = Math.floor(bufferLength / 2);
+      for (let i = 0; i < beatLength; i++) {
+        sum += dataArray[i];
+      }
+      const average = sum / beatLength;
+      
+      // Map average energy (0-255) to a speed multiplier (1x to 4x speed)
+      let targetSpeed = 1 + (average / 255) * 3;
+      currentFlowerSpeed += (targetSpeed - currentFlowerSpeed) * 0.1; // Smooth interpolation
+      
+      document.querySelectorAll('.flower').forEach(flower => {
+        flower.getAnimations().forEach(anim => {
+          anim.playbackRate = currentFlowerSpeed;
+        });
+      });
+      // -----------------------------------------
+      
+      // --- Party Mode Dynamic Beat Strobe ---
+      const strobeOverlay = document.getElementById("strobeOverlay");
+      if (isPartyMode && strobeOverlay) {
+        if (average > 215) { // Hard bass threshold
+          strobeOverlay.style.opacity = (average - 200) / 55;
+          strobeOverlay.style.background = `hsl(${Math.random() * 360}, 100%, 60%)`;
+        } else {
+          let currentOpacity = parseFloat(strobeOverlay.style.opacity) || 0;
+          strobeOverlay.style.opacity = Math.max(0, currentOpacity - 0.08); // Smooth decay
+        }
+      } else if (strobeOverlay && strobeOverlay.style.opacity > 0) {
+        strobeOverlay.style.opacity = 0;
+      }
+      // --------------------------------------
+
+      // --- Pro Audio Studio EQ Visualizer ---
+      const eqCanvas = document.getElementById("eqCanvas");
+      if (eqCanvas && eqModal.style.display !== "none") {
+        const eqCtx = eqCanvas.getContext("2d");
+        // Prevent 60fps layout thrashing by only writing if dimensions change (Huge optimization)
+        if (eqCanvas.width !== eqCanvas.offsetWidth) eqCanvas.width = eqCanvas.offsetWidth;
+        if (eqCanvas.height !== eqCanvas.offsetHeight) eqCanvas.height = eqCanvas.offsetHeight;
+        eqCtx.clearRect(0, 0, eqCanvas.width, eqCanvas.height);
+
+        const eqBarWidth = (eqCanvas.width / bufferLength) * 2.5;
+        let eqX = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const eqBarHeight = (dataArray[i] / 255) * eqCanvas.height;
+          const color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#9cb49b';
+          eqCtx.fillStyle = color;
+          eqCtx.fillRect(eqX, eqCanvas.height - eqBarHeight, eqBarWidth, eqBarHeight);
+          eqX += eqBarWidth + 1;
+        }
+      }
+      // --------------------------------------
+
+      canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+      
+      const barWidth = (visualizerCanvas.width / bufferLength) * 2.5;
+      let x = 0;
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * visualizerCanvas.height;
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#9cb49b';
+        canvasCtx.fillStyle = primaryColor;
+        canvasCtx.fillRect(x, visualizerCanvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+      }
+    }
+    draw();
+  } catch (err) {
+    console.log("AudioContext initialization failed:", err);
+  }
+}
 
 let currentLyrics = [];
 let currentSongIndex = -1;
@@ -1271,6 +1503,11 @@ albumCover.onerror = function() {
   this.src = fallbackCover;
 };
 
+polaroidImage.onerror = function() {
+  this.style.display = "none"; // Hide polaroid image gracefully if the external link dies
+};
+
+
 // 3. Render Songs into the Browse Category
 function renderSongs(songsToRender) {
   songListElement.innerHTML = "";
@@ -1284,13 +1521,32 @@ function renderSongs(songsToRender) {
   songsToRender.forEach((song) => {
     const div = document.createElement("div");
     div.className = "song-item";
-    div.innerHTML = `
-      <div class="song-list-info">
-        <strong>${song.title}</strong>
-        <span class="song-movie">${song.movie}</span>
-      </div>
+    div.dataset.songId = song.id;
+    
+    // Retain genie effect if this song is currently playing and the list re-renders
+    if (currentSongIndex !== -1 && songDatabase[currentSongIndex].id === song.id) {
+      div.classList.add("playing-genie");
+    }
+    
+    const infoDiv = document.createElement("div");
+    infoDiv.className = "song-list-info";
+    infoDiv.innerHTML = `
+      <strong>${song.title}</strong>
+      <span class="song-movie">${song.movie}</span>
     `;
-    div.onclick = () => playSong(song);
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "add-to-playlist-btn";
+    addBtn.title = "Add/Remove from Playlist";
+    addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+    addBtn.onclick = (e) => {
+      e.stopPropagation(); // Prevents the song from playing when clicking the + button
+      openPlaylistModal(song);
+    };
+
+    div.appendChild(infoDiv);
+    div.appendChild(addBtn);
+    div.onclick = () => crossfadeToSong(songDatabase.findIndex(s => s.id === song.id));
     songListElement.appendChild(div);
   });
 }
@@ -1351,14 +1607,33 @@ function updateLibraryDropdown() {
   likedOption.innerText = "Liked Songs ❤️";
   librarySelect.appendChild(likedOption);
   
+  // Render Custom Playlists
+  const playlistNames = Object.keys(customPlaylists);
+  if (playlistNames.length > 0) {
+    const customGroup = document.createElement("optgroup");
+    customGroup.label = "Your Playlists";
+    playlistNames.forEach(name => {
+      const option = document.createElement("option");
+      option.value = "playlist_" + name;
+      option.innerText = "🎵 " + name;
+      customGroup.appendChild(option);
+    });
+    librarySelect.appendChild(customGroup);
+  }
+
+  // Render Movies / Albums
+  const movieGroup = document.createElement("optgroup");
+  movieGroup.label = "Albums & Movies";
   movies.forEach(movie => {
     const option = document.createElement("option");
     option.value = movie;
     option.innerText = movie;
-    librarySelect.appendChild(option);
+    movieGroup.appendChild(option);
   });
+  librarySelect.appendChild(movieGroup);
   
-  if (movies.includes(currentSelection) || currentSelection === "all" || currentSelection === "Liked Songs") {
+  // Attempt to restore their selection after update
+  if (currentSelection === "all" || currentSelection === "Liked Songs" || movies.includes(currentSelection) || currentSelection.startsWith("playlist_")) {
     librarySelect.value = currentSelection;
   }
 }
@@ -1369,7 +1644,19 @@ function filterAndRender() {
   
   const filteredSongs = songDatabase.filter((song) => {
     const matchesSearch = song.title.toLowerCase().includes(searchTerm);
-    const matchesLibrary = selectedLibrary === "all" || (selectedLibrary === "Liked Songs" ? song.isLiked : song.movie === selectedLibrary);
+    
+    let matchesLibrary = false;
+    if (selectedLibrary === "all") {
+      matchesLibrary = true;
+    } else if (selectedLibrary === "Liked Songs") {
+      matchesLibrary = song.isLiked;
+    } else if (selectedLibrary.startsWith("playlist_")) {
+      const playlistName = selectedLibrary.replace("playlist_", "");
+      matchesLibrary = customPlaylists[playlistName] && customPlaylists[playlistName].includes(song.id);
+    } else {
+      matchesLibrary = song.movie === selectedLibrary;
+    }
+    
     return matchesSearch && matchesLibrary;
   });
   renderSongs(filteredSongs);
@@ -1378,17 +1665,76 @@ function filterAndRender() {
 searchInput.addEventListener("input", filterAndRender);
 librarySelect.addEventListener("change", filterAndRender);
 
+// --- Random Dynamic Background Colors ---
+function applyRandomThemeColor() {
+  // Generate random vibrant but balanced colors
+  const r = Math.floor(Math.random() * 156) + 100; // 100-255
+  const g = Math.floor(Math.random() * 156) + 100;
+  const b = Math.floor(Math.random() * 156) + 100;
+  
+  const rgb = `rgb(${r}, ${g}, ${b})`;
+  // Create a much darker version of the same color for the background gradient
+  const darkerRgb = `rgb(${Math.floor(r * 0.3)}, ${Math.floor(g * 0.3)}, ${Math.floor(b * 0.3)})`;
+  
+  document.documentElement.style.setProperty('--primary-color', rgb);
+  document.documentElement.style.setProperty('--bg-gradient', `linear-gradient(135deg, ${darkerRgb} 0%, #1a1a1a 100%)`);
+}
+
 // 5. Play Song and Load Lyrics
 function playSong(song) {
   // Find global index for Next/Prev buttons
   currentSongIndex = songDatabase.findIndex(s => s.id === song.id);
   
+  initVisualizer();
+  applyRandomThemeColor();
+
+  // Record Stats for Pari's Wrapped
+  playStats[song.id] = (playStats[song.id] || 0) + 1;
+  localStorage.setItem("pariPlayStats", JSON.stringify(playStats));
+
   // Update player and play
   audioPlayer.src = song.file;
   audioPlayer.play();
   isPlaying = true;
   playIcon.className = "fas fa-pause-circle";
   currentSongTitle.innerText = song.title;
+  albumCover.classList.add("playing");
+
+  // Apply the magical genie effect to the currently playing song in the playlist
+  document.querySelectorAll('.song-item').forEach(item => {
+    item.classList.remove('playing-genie');
+  });
+  const activeItem = document.querySelector(`.song-item[data-song-id="${song.id}"]`);
+  if (activeItem) {
+    activeItem.classList.add('playing-genie');
+    activeItem.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // Display Digital Polaroid Memory if it exists
+  const hasPolaroidImage = customMemories[song.id] || song.memoryImage;
+  if (song.memoryText || hasPolaroidImage) {
+    polaroidImage.src = customMemories[song.id] || song.memoryImage || "";
+    polaroidImage.style.display = hasPolaroidImage ? "block" : "none";
+    polaroidText.innerText = song.memoryText || "";
+    polaroidContainer.classList.add("visible");
+  } else {
+    polaroidContainer.classList.remove("visible");
+  }
+
+  // Setup Media Session API (Lock Screen & Device Controls)
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: song.movie,
+      album: 'Pari Spotify',
+      artwork: [
+        { src: customCovers[song.id] || song.cover || fallbackCover, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', playPrevTrack);
+    navigator.mediaSession.setActionHandler('nexttrack', playNextTrack);
+    // Play/Pause handlers will just click our main UI button to keep state in sync
+  }
 
   // Update Like Button State
   if (song.isLiked) {
@@ -1397,12 +1743,12 @@ function playSong(song) {
     loveBtn.classList.remove("liked");
   }
 
-  // Update Album Cover: Set default or database cover first
-  albumCover.src = song.cover || fallbackCover;
+  // Update Album Cover: Prioritize Custom Cover -> Database Cover -> Fallback
+  albumCover.src = customCovers[song.id] || song.cover || fallbackCover;
 
   // Try to extract the embedded album art directly from the MP3 file
   try {
-    if (window.jsmediatags) {
+    if (window.jsmediatags && !customCovers[song.id]) {
       window.jsmediatags.read(song.rawFile || song.file, {
         onSuccess: function (tag) {
           const picture = tag.tags.picture;
@@ -1439,7 +1785,19 @@ function playSong(song) {
     const p = document.createElement("p");
     p.className = "lyric-line";
     p.id = `lyric-${index}`;
-    p.innerText = lyric.text;
+    
+    if (lyric.words) {
+      p.style.color = "rgba(255, 240, 243, 0.5)"; // Base color for Karaoke line
+      lyric.words.forEach((w, wIndex) => {
+        const span = document.createElement("span");
+        span.className = "lyric-word";
+        span.innerText = w.text + " ";
+        span.dataset.time = w.time;
+        p.appendChild(span);
+      });
+    } else {
+      p.innerText = lyric.text;
+    }
 
     // Allow clicking a lyric to skip to that part of the song
     p.onclick = () => {
@@ -1481,6 +1839,17 @@ audioPlayer.addEventListener("timeupdate", () => {
       // Smoothly scroll the lyrics container so the active line stays in the middle
       activeLine.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    
+    // Word-by-word Highlighting
+    if (activeLine && activeLine.querySelector(".lyric-word")) {
+      activeLine.querySelectorAll(".lyric-word").forEach(span => {
+        if (currentTime >= parseFloat(span.dataset.time)) {
+          span.classList.add("word-active");
+        } else {
+          span.classList.remove("word-active");
+        }
+      });
+    }
   }
 });
 
@@ -1494,21 +1863,87 @@ function formatTime(seconds) {
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
-// Play/Pause Toggle
+let tapeStopInterval;
+let tapeStartInterval;
+
+// Play/Pause Toggle (Turntable Effect)
 playPauseBtn.addEventListener("click", () => {
   if (currentSongIndex === -1) return; // Do nothing if no song is loaded
   
+  initVisualizer();
+  clearInterval(tapeStopInterval);
+  clearInterval(tapeStartInterval);
+
   if (isPlaying) {
-    audioPlayer.pause();
     playIcon.className = "fas fa-play-circle";
+    albumCover.classList.remove("playing");
+    isPlaying = false;
+
+    // Turntable Tape Stop Down
+    let dropRate = audioPlayer.playbackRate;
+    tapeStopInterval = setInterval(() => {
+      dropRate -= 0.06;
+      if (dropRate <= 0.05) {
+        clearInterval(tapeStopInterval);
+        audioPlayer.pause();
+        audioPlayer.playbackRate = isReverbActive ? 0.85 : 1.0;
+      } else audioPlayer.playbackRate = dropRate;
+    }, 20);
   } else {
-    audioPlayer.play();
     playIcon.className = "fas fa-pause-circle";
+    albumCover.classList.add("playing");
+    isPlaying = true;
+
+    // Turntable Wind Up
+    audioPlayer.playbackRate = 0.1;
+    audioPlayer.play();
+    const targetRate = isReverbActive ? 0.85 : 1.0;
+    tapeStartInterval = setInterval(() => {
+      audioPlayer.playbackRate += 0.06;
+      if (audioPlayer.playbackRate >= targetRate) {
+        clearInterval(tapeStartInterval);
+        audioPlayer.playbackRate = targetRate;
+      }
+    }, 20);
   }
-  isPlaying = !isPlaying;
 });
 
-// Next & Previous Track functions
+let isFading = false;
+function crossfadeToSong(songIndex) {
+  if (isFading) return; // Prevent double clicking bugs
+  
+  // If nothing is playing, just play immediately without fading
+  if (currentSongIndex === -1 || !isPlaying) {
+    playSong(songDatabase[songIndex]);
+    return;
+  }
+  
+  isFading = true;
+  const userTargetVolume = parseFloat(volumeBar.value) || 1;
+  
+  // Smooth 500ms fade out
+  let fadeOutInterval = setInterval(() => {
+    if (audioPlayer.volume > 0.1) {
+      audioPlayer.volume = Math.max(0, audioPlayer.volume - 0.1);
+    } else {
+      clearInterval(fadeOutInterval);
+      audioPlayer.volume = 0;
+      playSong(songDatabase[songIndex]); // Switch tracks at silence
+      
+      // Smooth 500ms fade in
+      let fadeInInterval = setInterval(() => {
+        if (audioPlayer.volume < userTargetVolume - 0.1) {
+          audioPlayer.volume = Math.min(userTargetVolume, audioPlayer.volume + 0.1);
+        } else {
+          audioPlayer.volume = userTargetVolume; // Restore exact user volume
+          clearInterval(fadeInInterval);
+          isFading = false;
+        }
+      }, 50);
+    }
+  }, 50);
+}
+
 function playNextTrack() {
   if (currentSongIndex === -1) return;
   
@@ -1517,17 +1952,17 @@ function playNextTrack() {
     do {
       randomIndex = Math.floor(Math.random() * songDatabase.length);
     } while (randomIndex === currentSongIndex && songDatabase.length > 1);
-    playSong(songDatabase[randomIndex]);
+    crossfadeToSong(randomIndex);
   } else {
     let nextIndex = (currentSongIndex + 1) % songDatabase.length;
-    playSong(songDatabase[nextIndex]);
+    crossfadeToSong(nextIndex);
   }
 }
 
 function playPrevTrack() {
   if (currentSongIndex === -1) return;
   let prevIndex = (currentSongIndex - 1 + songDatabase.length) % songDatabase.length;
-  playSong(songDatabase[prevIndex]);
+  crossfadeToSong(prevIndex);
 }
 
 nextBtn.addEventListener("click", playNextTrack);
@@ -1601,16 +2036,62 @@ muteBtn.addEventListener("click", () => {
   volumeBar.dispatchEvent(new Event("input"));
 });
 
+// --- SLEEP TIMER LOGIC ---
+let sleepTimerMinutes = 0;
+let sleepTimerTimeout = null;
+let sleepTimerCountdown = null;
+
+sleepTimerBtn.addEventListener("click", () => {
+  // Cycle: Off (0) -> 15 -> 30 -> 60 -> Off (0)
+  if (sleepTimerMinutes === 0) sleepTimerMinutes = 15;
+  else if (sleepTimerMinutes === 15) sleepTimerMinutes = 30;
+  else if (sleepTimerMinutes === 30) sleepTimerMinutes = 60;
+  else sleepTimerMinutes = 0;
+
+  clearTimeout(sleepTimerTimeout);
+  clearInterval(sleepTimerCountdown);
+
+  if (sleepTimerMinutes === 0) {
+    sleepTimerBtn.classList.remove("active");
+    sleepTimerDisplay.style.display = "none";
+  } else {
+    sleepTimerBtn.classList.add("active");
+    sleepTimerDisplay.style.display = "inline-block";
+    
+    let remainingSeconds = sleepTimerMinutes * 60;
+    
+    sleepTimerCountdown = setInterval(() => {
+      remainingSeconds--;
+      if (remainingSeconds <= 0) clearInterval(sleepTimerCountdown);
+      
+      const m = Math.floor(remainingSeconds / 60);
+      const s = remainingSeconds % 60;
+      sleepTimerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+      
+      // Fade out audio volume smoothly during the last 10 seconds
+      if (remainingSeconds <= 10 && remainingSeconds > 0 && isPlaying) {
+        audioPlayer.volume = Math.max(0, audioPlayer.volume - 0.1);
+        volumeBar.value = audioPlayer.volume;
+        volumeBar.style.background = `linear-gradient(to right, var(--primary-color) ${audioPlayer.volume * 100}%, rgba(255, 255, 255, 0.2) ${audioPlayer.volume * 100}%)`;
+      }
+    }, 1000);
+
+    sleepTimerTimeout = setTimeout(() => {
+      if (isPlaying) playPauseBtn.click(); // Gracefully pauses the player
+      sleepTimerBtn.click(); // Resets the timer visually to Off
+    }, sleepTimerMinutes * 60 * 1000);
+  }
+});
+
 // Initialize the app
 updateLibraryDropdown();
 filterAndRender();
 
-// 7. Floating Plumeria Flowers Animation
-function createFlowers() {
-  const flowerContainer = document.createElement("div");
-  flowerContainer.className = "flower-container";
-  document.body.appendChild(flowerContainer);
+// 7. Floating Background Shapes Animation (Flowers, Seashells, Hearts)
+let currentShapeIndex = parseInt(localStorage.getItem("pariShapePreference")) || 0;
 
+function createFloatingShapes() {
+  
   const plumeriaSVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <g fill="#fdfdfd" stroke="#e8d5b5" stroke-width="1">
       <path d="M50,50 C30,10 60,10 50,50 Z" transform="rotate(0 50 50)"/>
@@ -1622,20 +2103,59 @@ function createFlowers() {
     <circle cx="50" cy="50" r="6" fill="#ffda4a"/>
   </svg>`;
 
+  const seashellSVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50,85 C30,85 15,65 15,45 C15,25 35,15 50,15 C65,15 85,25 85,45 C85,65 70,85 50,85 Z" fill="#fff0f5" stroke="#ffb6c1" stroke-width="2"/>
+    <path d="M50,85 Q40,50 25,35" stroke="#ffb6c1" stroke-width="2" fill="none"/>
+    <path d="M50,85 Q45,45 40,20" stroke="#ffb6c1" stroke-width="2" fill="none"/>
+    <path d="M50,85 L50,15" stroke="#ffb6c1" stroke-width="2" fill="none"/>
+    <path d="M50,85 Q55,45 60,20" stroke="#ffb6c1" stroke-width="2" fill="none"/>
+    <path d="M50,85 Q60,50 75,35" stroke="#ffb6c1" stroke-width="2" fill="none"/>
+    <path d="M40,85 L60,85 C65,95 35,95 40,85 Z" fill="#ffb6c1"/>
+  </svg>`;
+
+  const heartSVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50,85 C20,55 10,40 10,25 C10,10 25,5 35,5 C45,5 50,15 50,15 C50,15 55,5 65,5 C75,5 90,10 90,25 C90,40 80,55 50,85 Z" fill="#ff4d6d" opacity="0.8"/>
+  </svg>`;
+
+  const shapes = [plumeriaSVG, seashellSVG, heartSVG];
+  const activeShape = shapes[currentShapeIndex % shapes.length];
+
+  // If the shapes already exist, just safely swap their SVGs without restarting the animation to prevent freezing!
+  const existingFlowers = document.querySelectorAll(".flower");
+  if (existingFlowers.length > 0) {
+    existingFlowers.forEach(flower => {
+      flower.innerHTML = activeShape;
+    });
+    return;
+  }
+
+  // Otherwise, create the container and shapes for the very first time
+  const newContainer = document.createElement("div");
+  newContainer.className = "flower-container";
+  document.body.appendChild(newContainer);
+
   for (let i = 0; i < 20; i++) {
-    const flower = document.createElement("div");
-    flower.className = "flower";
-    flower.innerHTML = plumeriaSVG;
+    const shape = document.createElement("div");
+    shape.className = "flower"; // Keeping the class name as "flower" so it dynamically syncs with the Audio beat!
+    shape.innerHTML = activeShape;
     
     // Randomize positions and animations
-    flower.style.left = Math.random() * 100 + "vw";
-    flower.style.animationDuration = (Math.random() * 10 + 10) + "s"; // 10s to 20s
-    flower.style.animationDelay = Math.random() * 10 + "s";
+    shape.style.left = Math.random() * 100 + "vw";
+    shape.style.animationDuration = (Math.random() * 10 + 10) + "s"; // 10s to 20s
+    shape.style.animationDelay = "-" + (Math.random() * 20) + "s"; // Negative delay spawns them instantly!
     
-    flowerContainer.appendChild(flower);
+    newContainer.appendChild(shape);
   }
 }
-createFlowers();
+createFloatingShapes();
+
+if (shapeToggleBtn) {
+  shapeToggleBtn.addEventListener("click", () => {
+    currentShapeIndex = (currentShapeIndex + 1) % 3; // Cycles: 0 -> 1 -> 2 -> 0
+    localStorage.setItem("pariShapePreference", currentShapeIndex);
+    createFloatingShapes();
+  });
+}
 
 // 8. Login Auth & Startup Screen Animation Logic
 const loginScreen = document.getElementById("loginScreen");
@@ -1686,6 +2206,20 @@ if (localStorage.getItem("pariSpotifyUnlocked") === "true") {
         loginError.style.display = 'block';
       }
     });
+  });
+}
+
+// 9.5 3D Parallax Polaroid Hover Effect
+if (polaroidContainer) {
+  polaroidContainer.addEventListener('mousemove', (e) => {
+    if (!polaroidContainer.classList.contains('visible')) return;
+    const rect = polaroidContainer.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    polaroidContainer.style.transform = `translateY(0) translateX(0) perspective(600px) rotateX(${-y/4}deg) rotateY(${x/4}deg) scale(1.15)`;
+  });
+  polaroidContainer.addEventListener('mouseleave', () => {
+    if (polaroidContainer.classList.contains('visible')) polaroidContainer.style.transform = '';
   });
 }
 
@@ -1745,3 +2279,575 @@ loveBtn.addEventListener("click", (e) => {
     filterAndRender();
   }
 });
+
+// 10. Keyboard Shortcuts (Space, Arrows)
+document.addEventListener('keydown', (e) => {
+  // Don't trigger if the user is typing in the search bar
+  if (document.activeElement === searchInput) return;
+  
+  // Map keys to actions
+  switch(e.code) {
+    case 'Space':
+      e.preventDefault(); // Prevent page from scrolling down
+      playPauseBtn.click();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      playNextTrack();
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      playPrevTrack();
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      audioPlayer.volume = Math.min(1, audioPlayer.volume + 0.1);
+      volumeBar.value = audioPlayer.volume;
+      volumeBar.dispatchEvent(new Event('input'));
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      audioPlayer.volume = Math.max(0, audioPlayer.volume - 0.1);
+      volumeBar.value = audioPlayer.volume;
+      volumeBar.dispatchEvent(new Event('input'));
+      break;
+  }
+});
+
+// 11. Progressive Web App (PWA) Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => console.log('ServiceWorker registered successfully!'))
+      .catch(err => console.log('ServiceWorker failed:', err));
+  });
+}
+
+// 12. Custom Playlist Management Logic
+const playlistModal = document.getElementById("playlistModal");
+const playlistModalOptions = document.getElementById("playlistModalOptions");
+const closePlaylistModal = document.getElementById("closePlaylistModal");
+const createPlaylistBtn = document.getElementById("createPlaylistBtn");
+let songToAdd = null;
+
+function openPlaylistModal(song) {
+  songToAdd = song;
+  playlistModalOptions.innerHTML = "";
+  
+  // Option to create a new playlist directly from the modal
+  const createNewBtn = document.createElement("button");
+  createNewBtn.className = "login-option-btn";
+  createNewBtn.innerHTML = '<i class="fas fa-plus"></i> Create New Playlist';
+  createNewBtn.onclick = () => {
+    const name = prompt("Enter a name for your new playlist:");
+    if (name && name.trim() !== "") {
+      if (!customPlaylists[name.trim()]) customPlaylists[name.trim()] = [];
+      if (!customPlaylists[name.trim()].includes(songToAdd.id)) customPlaylists[name.trim()].push(songToAdd.id);
+      savePlaylistsAndClose();
+    }
+  };
+  playlistModalOptions.appendChild(createNewBtn);
+
+  // List existing playlists to add/remove the song
+  Object.keys(customPlaylists).forEach(playlistName => {
+    const btn = document.createElement("button");
+    btn.className = "login-option-btn";
+    
+    const isInPlaylist = customPlaylists[playlistName].includes(songToAdd.id);
+    btn.innerHTML = isInPlaylist ? `<i class="fas fa-check-circle" style="color: var(--primary-color);"></i> ${playlistName}` : playlistName;
+    
+    btn.onclick = () => {
+      if (isInPlaylist) {
+        customPlaylists[playlistName] = customPlaylists[playlistName].filter(id => id !== songToAdd.id); // Remove
+      } else {
+        customPlaylists[playlistName].push(songToAdd.id); // Add
+      }
+      savePlaylistsAndClose();
+    };
+    playlistModalOptions.appendChild(btn);
+  });
+
+  playlistModal.style.display = "flex";
+  setTimeout(() => playlistModal.style.opacity = "1", 10);
+}
+
+function savePlaylistsAndClose() {
+  localStorage.setItem("customPlaylists", JSON.stringify(customPlaylists));
+  updateLibraryDropdown();
+  filterAndRender(); // Refresh UI dynamically
+  
+  playlistModal.style.opacity = "0";
+  setTimeout(() => playlistModal.style.display = "none", 500);
+}
+
+closePlaylistModal.addEventListener("click", () => {
+  playlistModal.style.opacity = "0";
+  setTimeout(() => playlistModal.style.display = "none", 500);
+});
+
+// Header Button to just create an empty playlist
+createPlaylistBtn.addEventListener("click", () => {
+  const name = prompt("Enter a name for your new playlist:");
+  if (name && name.trim() !== "") {
+    if (!customPlaylists[name.trim()]) {
+      customPlaylists[name.trim()] = [];
+      localStorage.setItem("customPlaylists", JSON.stringify(customPlaylists));
+      updateLibraryDropdown();
+      librarySelect.value = "playlist_" + name.trim();
+      filterAndRender();
+    } else {
+      alert("A playlist with that name already exists!");
+    }
+  }
+});
+
+// 13. Pro Audio Studio (EQ) Logic
+const eqBtn = document.getElementById("eqBtn");
+const eqModal = document.getElementById("eqModal");
+const closeEqModal = document.getElementById("closeEqModal");
+const bassValue = document.getElementById("bassValue");
+const trebleValue = document.getElementById("trebleValue");
+
+function formatEqValue(val) {
+  return val > 0 ? `+${val} dB` : `${val} dB`;
+}
+
+function setupKnob(knobId, valueId, getFilter, min, max, initial) {
+  const knob = document.getElementById(knobId);
+  const valueDisplay = document.getElementById(valueId);
+  if (!knob || !valueDisplay) return;
+
+  let currentValue = initial;
+  let isDragging = false;
+  let startY = 0;
+
+  function updateKnob(val) {
+    const range = max - min;
+    const percentage = (val - min) / range;
+    // Map to a 270 degree rotation range (-135deg to +135deg)
+    const deg = -135 + (percentage * 270);
+    knob.style.transform = `rotate(${deg}deg)`;
+    valueDisplay.innerText = formatEqValue(val);
+    
+    const filter = getFilter();
+    if (filter) filter.gain.value = val;
+  }
+
+  function handleMove(clientY) {
+    if (!isDragging) return;
+    const deltaY = startY - clientY; // Upward drag is positive
+    startY = clientY;
+    
+    currentValue += deltaY * 0.3; // Adjust sensitivity
+    currentValue = Math.max(min, Math.min(max, currentValue));
+    updateKnob(Math.round(currentValue));
+  }
+
+  // Mouse interactions
+  knob.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startY = e.clientY;
+    document.body.style.userSelect = 'none'; // Prevent accidental text highlighting
+  });
+  window.addEventListener('mousemove', (e) => handleMove(e.clientY));
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    document.body.style.userSelect = '';
+  });
+
+  // Touch interactions
+  knob.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    startY = e.touches[0].clientY;
+    document.body.style.userSelect = 'none';
+  }, { passive: false });
+  window.addEventListener('touchmove', (e) => {
+    if (isDragging) e.preventDefault(); // Prevent scrolling while adjusting
+    handleMove(e.touches[0].clientY);
+  }, { passive: false });
+  window.addEventListener('touchend', () => {
+    isDragging = false;
+    document.body.style.userSelect = '';
+  });
+
+  updateKnob(currentValue);
+}
+
+// Initialize knobs
+setupKnob('bassKnob', 'bassValue', () => bassFilter, -10, 15, 0);
+setupKnob('trebleKnob', 'trebleValue', () => trebleFilter, -10, 15, 0);
+
+if (eqBtn) {
+  eqBtn.addEventListener("click", () => {
+    eqModal.style.display = "flex";
+    setTimeout(() => eqModal.style.opacity = "1", 10);
+  });
+  closeEqModal.addEventListener("click", () => {
+    eqModal.style.opacity = "0";
+    setTimeout(() => eqModal.style.display = "none", 500);
+  });
+}
+
+// 14. Pari's Wrapped (Stats) Logic
+const wrappedBtn = document.getElementById("wrappedBtn");
+const wrappedModal = document.getElementById("wrappedModal");
+const closeWrappedModal = document.getElementById("closeWrappedModal");
+const wrappedStats = document.getElementById("wrappedStats");
+
+if (wrappedBtn) {
+  wrappedBtn.addEventListener("click", () => {
+    const sortedStats = Object.entries(playStats).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    wrappedStats.innerHTML = "";
+    if (sortedStats.length === 0) {
+      wrappedStats.innerHTML = "<p style='font-weight:normal;'>You haven't listened to any songs yet! Go play some music! 🎵</p>";
+    } else {
+      sortedStats.forEach(([songId, count], index) => {
+        const song = songDatabase.find(s => s.id == songId);
+        if (song) {
+          wrappedStats.innerHTML += `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 5px;">
+              <span>#${index + 1} &nbsp; ${song.title}</span>
+              <span>${count} plays</span>
+            </div>`;
+        }
+      });
+    }
+    wrappedModal.style.display = "flex";
+    setTimeout(() => wrappedModal.style.opacity = "1", 10);
+  });
+  closeWrappedModal.addEventListener("click", () => {
+    wrappedModal.style.opacity = "0";
+    setTimeout(() => wrappedModal.style.display = "none", 500);
+  });
+}
+
+if (downloadWrappedBtn) {
+  downloadWrappedBtn.addEventListener("click", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080; canvas.height = 1920;
+    const ctx = canvas.getContext("2d");
+    
+    const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
+    grad.addColorStop(0, "#ff4d6d"); grad.addColorStop(1, "#ff8fa3");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 1080, 1920);
+    
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.font = "900 200px sans-serif";
+    ctx.fillText("🎵", 540, 400);
+    
+    ctx.fillStyle = "white"; ctx.textAlign = "center";
+    ctx.font = "bold 90px sans-serif"; ctx.fillText("Pari's Wrapped", 540, 300);
+    ctx.font = "40px sans-serif"; ctx.fillText("Top Played Songs of All Time", 540, 420);
+    
+    const sortedStats = Object.entries(playStats).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    ctx.textAlign = "left";
+    sortedStats.forEach(([songId, count], index) => {
+      const song = songDatabase.find(s => s.id == songId);
+      if (song) {
+        ctx.font = "bold 50px sans-serif";
+        ctx.fillText(`#${index + 1}  ${song.title}`, 150, 700 + (index * 150));
+        ctx.font = "40px sans-serif";
+        ctx.fillText(`${count} plays`, 800, 700 + (index * 150));
+      }
+    });
+    
+    const link = document.createElement("a");
+    link.download = "Paris_Wrapped.jpg";
+    link.href = canvas.toDataURL("image/jpeg");
+    link.click();
+  });
+}
+
+// 15. Audio Illusions (8D & Slowed+Reverb) Logic
+const toggle8DBtn = document.getElementById("toggle8DBtn");
+const toggleReverbBtn = document.getElementById("toggleReverbBtn");
+let is8DActive = false;
+let isReverbActive = false;
+let panAngle = 0;
+
+function orbitAudio() {
+  if (is8DActive && pannerNode) {
+    panAngle += 0.012; // Orbit Speed
+    pannerNode.pan.value = Math.sin(panAngle);
+    requestAnimationFrame(orbitAudio);
+  } else if (pannerNode) {
+    pannerNode.pan.value = 0;
+  }
+}
+
+if (toggle8DBtn) {
+  toggle8DBtn.addEventListener("click", () => {
+    is8DActive = !is8DActive;
+    toggle8DBtn.innerText = is8DActive ? "On" : "Off";
+    toggle8DBtn.style.color = is8DActive ? "var(--bg-color)" : "";
+    toggle8DBtn.style.background = is8DActive ? "var(--primary-color)" : "";
+    if (is8DActive) orbitAudio();
+  });
+}
+
+if (toggleReverbBtn) {
+  toggleReverbBtn.addEventListener("click", () => {
+    isReverbActive = !isReverbActive;
+    toggleReverbBtn.innerText = isReverbActive ? "On" : "Off";
+    toggleReverbBtn.style.color = isReverbActive ? "var(--bg-color)" : "";
+    toggleReverbBtn.style.background = isReverbActive ? "var(--primary-color)" : "";
+    
+    if (isReverbActive) {
+      if (dryGain && wetGain) {
+        dryGain.gain.value = 0.5; // Lower dry mix
+        wetGain.gain.value = 0.8; // High wet reverb mix
+      }
+      audioPlayer.playbackRate = 0.85; // Slow down aesthetic
+    } else {
+      if (dryGain && wetGain) {
+        dryGain.gain.value = 1;
+        wetGain.gain.value = 0;
+      }
+      audioPlayer.playbackRate = 1.0;
+    }
+  });
+}
+
+// 15.5 Ambient Lofi Rain Synthesizer
+const toggleRainBtn = document.getElementById("toggleRainBtn");
+let isRainActive = false;
+let rainSource, rainGainNode;
+
+if (toggleRainBtn) {
+  toggleRainBtn.addEventListener("click", () => {
+    isRainActive = !isRainActive;
+    toggleRainBtn.innerText = isRainActive ? "On" : "Off";
+    toggleRainBtn.style.color = isRainActive ? "var(--bg-color)" : "";
+    toggleRainBtn.style.background = isRainActive ? "var(--primary-color)" : "";
+
+    if (isRainActive && audioCtx) {
+      // Generate 2 seconds of pure white noise
+      const bufferSize = audioCtx.sampleRate * 2;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      
+      rainSource = audioCtx.createBufferSource();
+      rainSource.buffer = buffer;
+      rainSource.loop = true;
+      
+      // Muffle the noise so it sounds like cozy rain (Lowpass filter)
+      const rainFilter = audioCtx.createBiquadFilter();
+      rainFilter.type = "lowpass";
+      rainFilter.frequency.value = 800; // Deep rumble
+      
+      rainGainNode = audioCtx.createGain();
+      rainGainNode.gain.value = 0;
+      rainGainNode.gain.setTargetAtTime(0.25, audioCtx.currentTime, 1); // Fade in
+      
+      rainSource.connect(rainFilter).connect(rainGainNode).connect(audioCtx.destination);
+      rainSource.start();
+    } else if (rainGainNode && rainSource) {
+      rainGainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5); // Fade out
+      setTimeout(() => { if (rainSource) rainSource.disconnect(); }, 1000);
+    }
+  });
+}
+
+// 15.6 Vocal Remover (Phase Cancellation Circuit)
+const toggleKaraokeBtn = document.getElementById("toggleKaraokeBtn");
+let isKaraokeActive = false;
+
+if (toggleKaraokeBtn) {
+  toggleKaraokeBtn.addEventListener("click", () => {
+    isKaraokeActive = !isKaraokeActive;
+    toggleKaraokeBtn.innerText = isKaraokeActive ? "On" : "Off";
+    toggleKaraokeBtn.style.color = isKaraokeActive ? "var(--bg-color)" : "";
+    toggleKaraokeBtn.style.background = isKaraokeActive ? "var(--primary-color)" : "";
+
+    if (vocalBypass && vocalMix) {
+      vocalBypass.gain.value = isKaraokeActive ? 0 : 1;
+      vocalMix.gain.value = isKaraokeActive ? 1 : 0;
+    }
+  });
+}
+
+// 15.7 Party Mode Strobe Logic
+if (partyBtn) {
+  partyBtn.addEventListener("click", () => {
+    isPartyMode = !isPartyMode;
+    partyBtn.classList.toggle("listening", isPartyMode); // Reuses the pulse heart animation!
+  });
+}
+
+// 15.8 Zen Karaoke Mode
+if (zenModeBtn) {
+  zenModeBtn.addEventListener("click", () => {
+    document.body.classList.toggle("zen-mode");
+    zenModeBtn.classList.toggle("active");
+  });
+}
+
+// 16. Hands-Free AI Voice Control Logic
+const micBtn = document.getElementById("micBtn");
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition && micBtn) {
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.lang = 'en-US';
+
+  micBtn.addEventListener("click", () => {
+    recognition.start();
+    micBtn.classList.add("listening");
+  });
+
+  recognition.onresult = (event) => {
+    const command = event.results[0][0].transcript.toLowerCase();
+    console.log("Heard Voice Command:", command);
+
+    // Playback Controls
+    if (command.includes("next") || command.includes("skip")) playNextTrack();
+    else if (command.includes("previous") || command.includes("back")) playPrevTrack();
+    else if (command.includes("pause") || command.includes("stop")) { if (isPlaying) playPauseBtn.click(); }
+    else if (command.includes("play")) {
+      const songName = command.replace("play", "").trim();
+      if (!songName && !isPlaying) playPauseBtn.click();
+      else if (songName) {
+        const found = songDatabase.find(s => s.title.toLowerCase().includes(songName) || songName.includes(s.title.toLowerCase()));
+        if (found) crossfadeToSong(songDatabase.findIndex(s => s.id === found.id));
+      }
+    }
+    // Volume Controls
+    else if (command.includes("volume up") || command.includes("louder")) {
+      audioPlayer.volume = Math.min(1, audioPlayer.volume + 0.2);
+      volumeBar.value = audioPlayer.volume;
+      volumeBar.dispatchEvent(new Event("input"));
+    }
+    else if (command.includes("volume down") || command.includes("quieter") || command.includes("softer")) {
+      audioPlayer.volume = Math.max(0, audioPlayer.volume - 0.2);
+      volumeBar.value = audioPlayer.volume;
+      volumeBar.dispatchEvent(new Event("input"));
+    }
+    else if (command.includes("mute")) {
+      if (audioPlayer.volume > 0) muteBtn.click();
+    }
+    else if (command.includes("unmute")) {
+      if (audioPlayer.volume === 0) muteBtn.click();
+    }
+    // Feature & UI Controls
+    else if (command.includes("shuffle")) shuffleBtn.click();
+    else if (command.includes("repeat")) repeatBtn.click();
+    else if ((command.includes("like") || command.includes("love")) && !command.includes("unlike")) {
+      if (currentSongIndex !== -1 && !songDatabase[currentSongIndex].isLiked) loveBtn.click();
+    }
+    else if (command.includes("unlike")) {
+      if (currentSongIndex !== -1 && songDatabase[currentSongIndex].isLiked) loveBtn.click();
+    }
+    else if (command.includes("party")) partyBtn.click();
+    else if (command.includes("zen")) zenModeBtn.click();
+    else if (command.includes("rain")) toggleRainBtn.click();
+    else if (command.includes("karaoke") || command.includes("vocals")) toggleKaraokeBtn.click();
+    else if (command.includes("8d") || command.includes("orbit")) toggle8DBtn.click();
+    else if (command.includes("reverb") || command.includes("slowed")) toggleReverbBtn.click();
+    else if (command.includes("stats") || command.includes("wrapped")) wrappedBtn.click();
+  };
+
+  recognition.onend = () => micBtn.classList.remove("listening");
+  recognition.onerror = () => micBtn.classList.remove("listening");
+}
+
+// 17. Custom Album Art Engine (Compression & Storage)
+if (coverFileInput) {
+  coverFileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file || currentSongIndex === -1) {
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        // Auto-Compress to 300x300 so localStorage 5MB limit doesn't break
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 300;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        const songId = songDatabase[currentSongIndex].id;
+        
+        try {
+          customCovers[songId] = compressedBase64;
+          localStorage.setItem("pariCustomCovers", JSON.stringify(customCovers));
+          albumCover.src = compressedBase64; // Instantly visually update!
+          
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata.artwork = [{ src: compressedBase64, sizes: '512x512', type: 'image/jpeg' }];
+          }
+        } catch (err) {
+          alert("Your custom art storage is full! Please clear browser data or replace existing covers.");
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+  });
+}
+
+// 18. Custom Polaroid Memory Engine
+if (polaroidFileInput) {
+  polaroidFileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file || currentSongIndex === -1) {
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        // Auto-Compress to max 400px width so localStorage doesn't overflow
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 400;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        const songId = songDatabase[currentSongIndex].id;
+        
+        customMemories[songId] = compressedBase64;
+        localStorage.setItem("pariCustomMemories", JSON.stringify(customMemories));
+        polaroidImage.src = compressedBase64;
+        polaroidImage.style.display = "block";
+        polaroidContainer.classList.add("visible");
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+  });
+}
