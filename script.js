@@ -1641,6 +1641,8 @@ createFlowers();
 const loginScreen = document.getElementById("loginScreen");
 const startupScreen = document.getElementById("startupScreen");
 const loginError = document.getElementById("loginError");
+const loginSuccess = document.getElementById("loginSuccess");
+const loginOptionsContainer = document.getElementById("loginOptionsContainer");
 const loginOptions = document.querySelectorAll(".login-option-btn");
 
 function playStartupAnimation() {
@@ -1657,20 +1659,42 @@ if (localStorage.getItem("pariSpotifyUnlocked") === "true") {
   if (loginScreen) loginScreen.remove();
   window.addEventListener('load', playStartupAnimation);
 } else {
+  // Shuffle the options so they are in a random order every time
+  if (loginOptionsContainer) {
+    const optionsArray = Array.from(loginOptions);
+    optionsArray.sort(() => Math.random() - 0.5);
+    optionsArray.forEach(option => loginOptionsContainer.appendChild(option));
+  }
+
   loginOptions.forEach(button => {
     button.addEventListener("click", function() {
       const isCorrect = this.getAttribute("data-correct") === "true";
       if (isCorrect) {
+        loginError.style.display = 'none';
+        if (loginSuccess) loginSuccess.style.display = 'block';
         localStorage.setItem("pariSpotifyUnlocked", "true");
-        loginScreen.style.opacity = '0';
+        
+        // Wait 1.5 seconds so she can read the message before unlocking
         setTimeout(() => {
-          loginScreen.remove();
-          playStartupAnimation(); // Trigger startup after login
-        }, 500);
+          loginScreen.style.opacity = '0';
+          setTimeout(() => {
+            loginScreen.remove();
+            playStartupAnimation(); // Trigger startup after login
+          }, 500);
+        }, 1500);
       } else {
         loginError.style.display = 'block';
       }
     });
+  });
+}
+
+// Lock App Functionality
+const lockAppBtn = document.getElementById("lockAppBtn");
+if (lockAppBtn) {
+  lockAppBtn.addEventListener("click", () => {
+    localStorage.removeItem("pariSpotifyUnlocked");
+    location.reload();
   });
 }
 
