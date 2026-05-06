@@ -812,20 +812,14 @@ audio {
     }
     .header-controls {
         width: 100%;
-        flex-wrap: nowrap;
-        justify-content: flex-start;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 10px;
-        overflow-x: auto; /* Side-scrolling for all the tools */
-        padding-bottom: 8px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none; /* Hides scrollbar on Firefox */
     }
-    .header-controls::-webkit-scrollbar { display: none; }
     #searchInput { 
-        width: 140px; 
-        flex-shrink: 0;
+        width: 100%; 
         order: -1; /* Put search bar neatly on top */
-        margin-bottom: 0;
+        margin-bottom: 5px;
         font-size: 14px;
     }
     

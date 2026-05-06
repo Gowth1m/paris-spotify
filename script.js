@@ -2366,7 +2366,19 @@ document.addEventListener('keydown', (e) => {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js')
-      .then(reg => console.log('ServiceWorker registered successfully!'))
+      .then(reg => {
+        console.log('ServiceWorker registered successfully!');
+        
+        // Auto-refresh the page if a new update is pushed to Vercel/GitHub
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
+          });
+        });
+      })
       .catch(err => console.log('ServiceWorker failed:', err));
   });
 }

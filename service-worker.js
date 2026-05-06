@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pari-spotify-v1';
+const CACHE_NAME = 'pari-spotify-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -10,9 +10,21 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Force the new version to take over immediately
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
+      );
+    })
+    .then(() => self.clients.claim()) // Force all open tabs to use the new version
   );
 });
 
@@ -22,12 +34,8 @@ self.addEventListener('fetch', event => {
     return; // Let the browser handle external requests normally
   }
 
-  // Network first for mp3s so big files don't fail, cache first for app UI/Styling
-  if (event.request.url.endsWith('.mp3')) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
-  } else {
-    event.respondWith(
-      caches.match(event.request).then(response => response || fetch(event.request))
-    );
-  }
+  // Network First strategy for everything: ensures updates push through instantly!
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
 });
