@@ -1695,7 +1695,10 @@ function playSong(song) {
 
   // Update player and play
   audioPlayer.src = song.file;
-  audioPlayer.play();
+  const playPromise = audioPlayer.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => console.log("Playback prevented by browser:", err));
+  }
   isPlaying = true;
   playIcon.className = "fas fa-pause-circle";
   currentSongTitle.innerText = song.title;
@@ -1937,7 +1940,10 @@ playPauseBtn.addEventListener("click", () => {
 
     // Turntable Wind Up
     try { audioPlayer.playbackRate = 0.1; } catch(e){}
-    audioPlayer.play();
+    const playPromise = audioPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => console.log("Playback prevented:", e));
+    }
     const targetRate = isReverbActive ? 0.85 : 1.0;
     tapeStartInterval = setInterval(() => {
       let newRate = audioPlayer.playbackRate + 0.06;
@@ -1965,27 +1971,21 @@ function crossfadeToSong(songIndex) {
   const userTargetVolume = parseFloat(volumeBar.value) || 1;
   let currentFadeVol = userTargetVolume; // Track virtually to fix iOS read-only volume loop bug
   
-  // Smooth 500ms fade out
-  let fadeOutInterval = setInterval(() => {
-    if (currentFadeVol > 0.1) {
-      currentFadeVol -= 0.1;
-      try { audioPlayer.volume = Math.max(0, currentFadeVol); } catch(e){}
+  // To prevent mobile browser autoplay blocks, we MUST play the new song synchronously!
+  // We instantly switch tracks and just perform a smooth fade-in.
+  try { audioPlayer.volume = 0; } catch(e){}
+  currentFadeVol = 0;
+  playSong(songDatabase[songIndex]); // Synchronous play bypasses autoplay restrictions
+  
+  // Smooth 500ms fade in
+  let fadeInInterval = setInterval(() => {
+    if (currentFadeVol < userTargetVolume - 0.1) {
+      currentFadeVol += 0.1;
+      try { audioPlayer.volume = Math.min(userTargetVolume, currentFadeVol); } catch(e){}
     } else {
-      clearInterval(fadeOutInterval);
-      try { audioPlayer.volume = 0; } catch(e){}
-      playSong(songDatabase[songIndex]); // Switch tracks at silence
-      
-      // Smooth 500ms fade in
-      let fadeInInterval = setInterval(() => {
-        if (currentFadeVol < userTargetVolume - 0.1) {
-          currentFadeVol += 0.1;
-          try { audioPlayer.volume = Math.min(userTargetVolume, currentFadeVol); } catch(e){}
-        } else {
-          try { audioPlayer.volume = userTargetVolume; } catch(e){} // Restore exact user volume
-          clearInterval(fadeInInterval);
-          isFading = false;
-        }
-      }, 50);
+      try { audioPlayer.volume = userTargetVolume; } catch(e){} // Restore exact user volume
+      clearInterval(fadeInInterval);
+      isFading = false;
     }
   }, 50);
 }

@@ -34,6 +34,11 @@ self.addEventListener('fetch', event => {
     return; // Let the browser handle external requests normally
   }
 
+  // Bypass SW for media files/Range requests to fix Safari audio playback bug!
+  if (event.request.url.match(/\.(mp3|wav|m4a)$/i) || event.request.headers.get('range')) {
+    return;
+  }
+
   // Network First strategy for everything: ensures updates push through instantly!
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))
