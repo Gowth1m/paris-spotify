@@ -1,0 +1,9 @@
+spotify-for-pari/
+│
+├── songs/                 # Put all your .mp3 files here
+│   ├── song1.mp3
+│   └── song2.mp3
+│
+├── index.html             # The main layout
+├── style.css              # The love-themed styling
+└── script.js              # The logic for playback, search, and lyrics

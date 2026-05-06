@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pari's personal spotify❤️</title>
+    <!-- Font Awesome for Spotify-like Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Startup Animation Screen -->
+    <div id="startupScreen" class="startup-screen">
+        <h1 class="startup-title">pari's personal spotify</h1>
+        <p>Loading your special playlist...</p>
+    </div>
+
+    <div class="app-container">
+        <!-- Header & Search -->
+        <header>
+            <h1>pari's personal spotify❤️</h1>
+            <div class="header-controls">
+                <input type="text" id="searchInput" placeholder="Search for a song...">
+                <label for="localFileInput" class="upload-btn" title="Import your own songs!">
+                    <i class="fas fa-plus"></i>
+                </label>
+                <input type="file" id="localFileInput" accept="audio/*" multiple style="display: none;">
+            </div>
+        </header>
+
+        <!-- Main Content (Browse & Lyrics) -->
+        <main>
+            <section class="browse-section">
+                <div class="browse-header">
+                    <h2>Your Playlist</h2>
+                    <select id="librarySelect" class="library-select">
+                        <option value="all">All Songs</option>
+                    </select>
+                </div>
+                <div id="songList" class="song-list">
+                    <!-- Songs will be injected here by JavaScript -->
+                </div>
+            </section>
+
+            <section class="lyrics-section">
+                <h2>Lyrics</h2>
+                <div id="lyricsContainer" class="lyrics-container">
+                    <p class="placeholder-text">Play a song to see the lyrics 💌</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Player Controls -->
+        <footer>
+            <div class="now-playing" id="nowPlayingLeft">
+                <img id="albumCover" src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%239cb49b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='50' fill='white'%3E%26%239835;%3C/text%3E%3C/svg%3E" alt="Album Cover" class="album-cover">
+                <div class="song-info">
+                    <span id="currentSongTitle">No song playing</span>
+                    <span id="currentArtist">Pari's Playlist ❤️</span>
+                </div>
+                <button id="loveBtn" class="love-btn" title="Send love!"><i class="fas fa-heart"></i></button>
+            </div>
+            
+            <div class="player-controls-container">
+                <div class="player-buttons">
+                    <button id="shuffleBtn" class="control-btn"><i class="fas fa-random"></i></button>
+                    <button id="prevBtn" class="control-btn"><i class="fas fa-step-backward"></i></button>
+                    <button id="playPauseBtn" class="control-btn play-pause"><i class="fas fa-play-circle"></i></button>
+                    <button id="nextBtn" class="control-btn"><i class="fas fa-step-forward"></i></button>
+                    <button id="repeatBtn" class="control-btn"><i class="fas fa-redo"></i></button>
+                </div>
+                <div class="playback-bar">
+                    <span id="currentTimeDisplay">0:00</span>
+                    <input type="range" id="progressBar" min="0" max="100" value="0">
+                    <span id="totalTimeDisplay">0:00</span>
+                </div>
+            </div>
+            
+            <div class="volume-controls">
+                <button id="muteBtn" class="control-btn"><i class="fas fa-volume-up"></i></button>
+                <input type="range" id="volumeBar" min="0" max="1" step="0.01" value="1">
+            </div>
+            
+            <!-- Audio element is now hidden! -->
+            <audio id="audioPlayer"></audio>
+        </footer>
+        <div class="made-with-love">made with love<br>~DG</div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
